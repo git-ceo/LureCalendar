@@ -1,0 +1,621 @@
+"""
+路亚日历.md 个人标点导入脚本
+从路亚日历.md中提取路亚标点，插入到fishing_spots表
+运行方式: cd LureCalendar-Backend && python seed_calendar_spots.py
+"""
+
+import uuid
+import time
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from main import SessionLocal, FishingSpotModel
+
+# ─── 路亚日历个人标点 ──────────────────────────────────────────
+# 来源: 路亚日历.md 中的实际作钓记录
+# 排除标准: 台钓/手竿标点（溪流小钩+饵等）、鲤鱼/白鲢等非路亚对象鱼标点
+# 保留标准: 明确使用拟饵（铅头钩/卡罗/飞蝇/查理等）或目标鱼为掠食性鱼类
+
+SPOTS = [
+    # ============================================================
+    #  A. 安昌河流域
+    # ============================================================
+    {
+        "name": "布鲁斯三期后面",
+        "latitude": 31.5350,
+        "longitude": 104.5700,
+        "river": "安昌河",
+        "city": "绵阳市",
+        "location_detail": "绵阳市安州区布鲁斯三期小区后面安昌河段",
+        "water_type": "河流",
+        "structure": "乱石滩、缓流洄湾",
+        "depth": 1.5,
+        "target_species": "斑鳜,桃花,溪石斑,大眼",
+        "lure_types": "微型铅头钩,小亮片,飞蝇钩",
+        "best_season": "3-5月（斑鳜窗口期）",
+        "note": "安昌河经典标点，斑鳜密度较高。3-5月斑鳜活跃期效果最好。部分河段可用溪流竿微物作钓。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "安州区",
+    },
+    {
+        "name": "水厂下土坎",
+        "latitude": 31.6500,
+        "longitude": 105.1630,
+        "river": "梓江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县水厂下方土坎河段",
+        "water_type": "河流",
+        "structure": "土坎、脚下岸邊、深浅交接",
+        "depth": 2.0,
+        "target_species": "鳜鱼,青梢,牛尾子",
+        "lure_types": "铅头钩+T尾,卡罗莱钓组,铅头钩+假泥鳅,绿色波动",
+        "best_season": "4-6月,9-11月",
+        "note": "梓潼鳜鱼核心标点之一。卡罗钓组搜鳜鱼效果好，铅头钩+假泥鳅也能中牛尾子。5月公斤鳜记录。脚下搜和岸边搜各有优势。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    # ============================================================
+    #  B. 芙蓉溪/芙蓉洗流域
+    # ============================================================
+    {
+        "name": "仙人桥",
+        "latitude": 31.4750,
+        "longitude": 104.7900,
+        "river": "芙蓉溪",
+        "city": "绵阳市",
+        "location_detail": "绵阳市游仙区芙蓉溪仙人桥河段",
+        "water_type": "河流",
+        "structure": "桥墩结构、深潭、乱石",
+        "depth": 3.0,
+        "target_species": "鳜鱼,鲈鱼",
+        "lure_types": "铅头钩+软饵,卡罗莱钓组,深潜米诺",
+        "best_season": "5-6月,9-10月",
+        "note": "芙蓉溪鳜鱼+鲈鱼双杀标点！夜钓效果更佳，5月夜间钓获鳜鱼3条+鲈鱼3条。桥墩下方结构复杂，藏鱼效果好。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "游仙区",
+    },
+    {
+        "name": "岳家寺",
+        "latitude": 31.4800,
+        "longitude": 104.7950,
+        "river": "芙蓉溪",
+        "city": "绵阳市",
+        "location_detail": "绵阳市游仙区芙蓉溪岳家寺河段",
+        "water_type": "河流",
+        "structure": "缓流洄湾、石底",
+        "depth": 2.5,
+        "target_species": "翘嘴",
+        "lure_types": "亮片,米诺,铁板",
+        "best_season": "8-10月（夜间窗口期）",
+        "note": "芙蓉溪翘嘴标点。9月夜间翘嘴活跃，20点后效果好。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "游仙区",
+    },
+    # ============================================================
+    #  C. 梓江流域（梓潼县）
+    # ============================================================
+    {
+        "name": "文昌堰出水口",
+        "latitude": 31.6400,
+        "longitude": 105.1650,
+        "river": "梓江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县文昌堰出水口河段",
+        "water_type": "河流",
+        "structure": "堰坝出水口、急流与缓流交界、深浅交接",
+        "depth": 2.5,
+        "target_species": "马口,桃花,小鲤鱼,大眼,清波",
+        "lure_types": "双钩飞蝇,微型亮片,飞蝇钩",
+        "best_season": "6-7月（马口桃花高峰期）",
+        "note": "梓江微物天堂！飞蝇钓马口桃花绝佳标点，6-7月鱼获可达50-100条。下雨天马口更活跃。出水口结构丰富，多鱼种混栖。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "小河口",
+        "latitude": 31.6100,
+        "longitude": 105.1850,
+        "river": "梓江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县梓江小河口河段",
+        "water_type": "河流",
+        "structure": "两河交汇、洄水湾、深潭",
+        "depth": 3.5,
+        "target_species": "翘嘴",
+        "lure_types": "疯狂查理,查理串钩,铁板",
+        "best_season": "7-8月（翘嘴晚口窗口期）",
+        "note": "梓江翘嘴核心标点！七八两的翘嘴竖条好点，晚口（天黑后）集中开口。查理串钩远投效果拔群，7月底至8月是翘嘴高峰期。下雨+降温天大翘嘴靠岸。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "一号坑",
+        "latitude": 31.6550,
+        "longitude": 105.1580,
+        "river": "梓江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县梓江一号坑河段",
+        "water_type": "河流",
+        "structure": "深坑、岩壁、乱石底",
+        "depth": 4.0,
+        "target_species": "鳜鱼,翘嘴",
+        "lure_types": "铅头钩+软饵,德州钓组,亮片",
+        "best_season": "3-5月,8-9月",
+        "note": "梓潼老牌鳜鱼标点！公斤级鳜鱼出没，翘嘴也有记录。深坑结构藏大鱼。注意：下游300米也是好标点。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "文昌闸坝",
+        "latitude": 31.6450,
+        "longitude": 105.1680,
+        "river": "梓江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县梓江文昌闸坝河段",
+        "water_type": "河流",
+        "structure": "闸坝结构、坝下急流、深潭",
+        "depth": 3.5,
+        "target_species": "鳜鱼",
+        "lure_types": "铅头钩+软饵,卡罗莱钓组,VIB",
+        "best_season": "4-5月,7月",
+        "note": "文昌闸坝鳜鱼标点。4月标鳜3条记录，7月鳜鱼40斤爆钓！闸坝下方含氧量高，鳜鱼聚集。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "凤凰大桥",
+        "latitude": 31.6280,
+        "longitude": 105.1720,
+        "river": "梓江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县凤凰大桥上下游河段",
+        "water_type": "河流",
+        "structure": "桥墩结构、深浅交接、乱石底",
+        "depth": 2.5,
+        "target_species": "鲶鱼,黄辣丁,鳜鱼",
+        "lure_types": "铅头钩+软饵,VIB,深潜米诺",
+        "best_season": "4-5月（鲶鱼夜间活跃）",
+        "note": "凤凰大桥多鱼种标点。鲶鱼、黄辣丁夜钓效果好。4月底鲶鱼2条记录。上游300米处也有标鳜记录。五一期间鱼口活跃。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "凤凰大桥上游300米",
+        "latitude": 31.6310,
+        "longitude": 105.1710,
+        "river": "梓江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县凤凰大桥上游约300米河段",
+        "water_type": "河流",
+        "structure": "流水处石堆、深浅交接",
+        "depth": 2.0,
+        "target_species": "鳜鱼",
+        "lure_types": "3.5根钓钩+绿色T尾,铅头钩+软饵",
+        "best_season": "4-5月",
+        "note": "凤凰大桥上游精品标点。流水处石堆掏石头缝搜鳜鱼，标鳜记录。3.5g小钩+绿色T尾效果好。上游还有小河沟入口。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "水岸花都",
+        "latitude": 31.6320,
+        "longitude": 105.1750,
+        "river": "梓江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县水岸花都小区旁梓江河段",
+        "water_type": "河流",
+        "structure": "岸边坡地、深浅交接",
+        "depth": 2.5,
+        "target_species": "鳜鱼",
+        "lure_types": "铅头钩+软饵,卡罗莱钓组",
+        "best_season": "4-5月,9-10月",
+        "note": "水岸花都鳜鱼标点。标鳜和斤鳜均有记录，5月鱼口好。对岸也有翘嘴标点。有钓友19年就开始在此打路亚。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "水岸花都对岸",
+        "latitude": 31.6330,
+        "longitude": 105.1740,
+        "river": "梓江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县水岸花都对岸梓江河段",
+        "water_type": "河流",
+        "structure": "对岸岩壁、洄水湾",
+        "depth": 2.5,
+        "target_species": "翘嘴",
+        "lure_types": "亮片,米诺,铁板",
+        "best_season": "9月",
+        "note": "水岸花都对岸翘嘴标点。9月夜间翘嘴出没。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "友谊桥",
+        "latitude": 31.6600,
+        "longitude": 105.1620,
+        "river": "梓江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县友谊桥河段",
+        "water_type": "河流",
+        "structure": "桥墩结构、缓流",
+        "depth": 2.5,
+        "target_species": "鲶鱼",
+        "lure_types": "铅头钩+软饵,VIB,深潜米诺",
+        "best_season": "4月（夜间窗口期）",
+        "note": "友谊桥鲶鱼标点。4月底夜间鲶鱼2条记录。21-22点窗口期。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "峰哥家背后",
+        "latitude": 31.6450,
+        "longitude": 105.1700,
+        "river": "梓江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县峰哥家背后梓江河段",
+        "water_type": "河流",
+        "structure": "岸边坡地、深浅交接",
+        "depth": 2.0,
+        "target_species": "鳜鱼",
+        "lure_types": "铅头钩+软饵,卡罗莱钓组",
+        "best_season": "4-5月",
+        "note": "峰哥家背后斤鳜标点。4月底斤鳜4条记录，18点后开口。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "栏杆大桥",
+        "latitude": 31.6400,
+        "longitude": 105.1750,
+        "river": "梓江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县栏杆大桥河段",
+        "water_type": "河流",
+        "structure": "桥墩结构、深潭",
+        "depth": 3.0,
+        "target_species": "鳜鱼,翘嘴",
+        "lure_types": "铅头钩+软饵,亮片",
+        "best_season": "春夏季清晨",
+        "note": "栏杆大桥标点。早上6点左右才开口，其他时间有人收杆。需把握清晨窗口期。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "金宝大桥",
+        "latitude": 31.6700,
+        "longitude": 105.1550,
+        "river": "梓江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县金宝大桥河段",
+        "water_type": "河流",
+        "structure": "桥墩结构、深潭",
+        "depth": 3.0,
+        "target_species": "鳜鱼",
+        "lure_types": "铅头钩+软饵,卡罗莱钓组",
+        "best_season": "8月",
+        "note": "金宝大桥鳜鱼标点。8月初连续两天出鱼，5条+8条，鱼情稳定。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "文昌堰（梓潼）",
+        "latitude": 31.6380,
+        "longitude": 105.1660,
+        "river": "梓江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县文昌堰河段",
+        "water_type": "河流",
+        "structure": "堰坝结构、洄水湾、深潭",
+        "depth": 3.0,
+        "target_species": "马口,桃花,鳜鱼,鲶鱼",
+        "lure_types": "铅头钩+软饵,飞蝇钩,亮片",
+        "best_season": "5-7月,9月",
+        "note": "文昌堰综合标点。5月巨马3条，7月马口桃花白条20条，鲶鱼1条。铅头钩+软饵搜鲶鱼效果好，梯梯下去右手50米踩水过去是核心标点。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "文昌堰宋家坝",
+        "latitude": 31.6350,
+        "longitude": 105.1600,
+        "river": "梓江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县文昌堰宋家坝河段",
+        "water_type": "河流",
+        "structure": "浅滩、洄水湾",
+        "depth": 1.5,
+        "target_species": "马口,桃花,微物",
+        "lure_types": "微型亮片,飞蝇钩,微物米诺",
+        "best_season": "7月",
+        "note": "文昌堰宋家坝微物标点。7月微物10条记录，适合轻装备作钓。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "许州",
+        "latitude": 31.7200,
+        "longitude": 105.2000,
+        "river": "潼江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县许州镇潼江河段",
+        "water_type": "河流",
+        "structure": "深潭、岩壁",
+        "depth": 3.0,
+        "target_species": "鳜鱼",
+        "lure_types": "铅头钩+软饵,卡罗莱钓组",
+        "best_season": "4月",
+        "note": "许州斤鳜标点。4月涨水期斤鳜10条爆钓！梓潼路亚佬分享。涨水期鳜鱼靠岸觅食。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "玛瑙",
+        "latitude": 31.7100,
+        "longitude": 105.1400,
+        "river": "潼江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县玛瑙镇潼江河段",
+        "water_type": "河流",
+        "structure": "岩壁、深潭",
+        "depth": 2.5,
+        "target_species": "鳜鱼",
+        "lure_types": "铅头钩+软饵,德州钓组",
+        "best_season": "4月",
+        "note": "玛瑙斤鳜标点。4月斤鳜3条记录，19度气温下鱼口好。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "许州大桥",
+        "latitude": 31.7210,
+        "longitude": 105.2010,
+        "river": "潼江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县许州大桥河段",
+        "water_type": "河流",
+        "structure": "桥墩结构",
+        "depth": 2.5,
+        "target_species": "鳜鱼,翘嘴",
+        "lure_types": "铅头钩+软饵,亮片",
+        "best_season": "4-6月",
+        "note": "许州大桥标点，许州镇核心河段之一。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    # ============================================================
+    #  D. 剑阁县
+    # ============================================================
+    {
+        "name": "剑阁江口镇",
+        "latitude": 32.0500,
+        "longitude": 105.3500,
+        "river": "嘉陵江",
+        "city": "广元市",
+        "location_detail": "剑阁县江口镇嘉陵江河段",
+        "water_type": "河流",
+        "structure": "深浅交接、洄水湾",
+        "depth": 4.0,
+        "target_species": "高尖(鳡鱼)",
+        "lure_types": "大铁板,大号米诺,沉水铅笔",
+        "best_season": "7月（高温期高尖活跃）",
+        "note": "剑阁江口镇高尖标点！7月高尖20条记录，水温23-33度高尖活性最高。大铁板远投效果拔群。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "剑阁县",
+    },
+    {
+        "name": "剑阁二廊桥",
+        "latitude": 32.0300,
+        "longitude": 105.3300,
+        "river": "嘉陵江",
+        "city": "广元市",
+        "location_detail": "剑阁县二廊桥河段",
+        "water_type": "河流",
+        "structure": "桥墩结构、洄水湾",
+        "depth": 3.0,
+        "target_species": "红尾",
+        "lure_types": "亮片,铁板,VIB",
+        "best_season": "7月",
+        "note": "剑阁二廊桥红尾标点。7月红尾1条记录，高温期红尾活跃。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "剑阁县",
+    },
+    # ============================================================
+    #  E. 盐亭县
+    # ============================================================
+    {
+        "name": "盐亭花都大桥闸口",
+        "latitude": 31.2150,
+        "longitude": 105.3850,
+        "river": "梓江/弥江",
+        "city": "绵阳市",
+        "location_detail": "盐亭县花都大桥闸口处",
+        "water_type": "河流",
+        "structure": "闸口结构、深浅交接",
+        "depth": 3.0,
+        "target_species": "鳜鱼",
+        "lure_types": "铅头钩+软饵,卡罗莱钓组",
+        "best_season": "7月",
+        "note": "盐亭花都大桥闸口鳜鱼标点。7月底鳜鱼1条记录。闸口处水流变化大，鳜鱼藏身点多。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "盐亭县",
+    },
+    # ============================================================
+    #  F. 普安/其他区域
+    # ============================================================
+    {
+        "name": "普安二郎桥上游",
+        "latitude": 31.5400,
+        "longitude": 105.0800,
+        "river": "潼江",
+        "city": "绵阳市",
+        "location_detail": "梓潼县普安镇二郎桥上游河段",
+        "water_type": "河流",
+        "structure": "堆石头沙子、缓流",
+        "depth": 1.5,
+        "target_species": "白条(巨型)",
+        "lure_types": "亮色飞蝇钩",
+        "best_season": "7月",
+        "note": "普安二郎桥巨型白条标点！半斤级白条，亮色飞蝇钩效果好。堆石头沙子底下是核心标点，离普安街上很近。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "梓潼县",
+    },
+    {
+        "name": "川音（绵阳校区）",
+        "latitude": 31.4700,
+        "longitude": 104.7700,
+        "river": "安昌河",
+        "city": "绵阳市",
+        "location_detail": "绵阳市涪城区四川音乐学院绵阳校区附近河段",
+        "water_type": "河流",
+        "structure": "深潭、岸边坡地",
+        "depth": 2.5,
+        "target_species": "鳜鱼",
+        "lure_types": "铅头钩+软饵,卡罗莱钓组",
+        "best_season": "7月",
+        "note": "川音校区鳜鱼标点。7月底鳜鱼出没记录。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "涪城区",
+    },
+    {
+        "name": "魏城拱桥沟",
+        "latitude": 31.5500,
+        "longitude": 104.8500,
+        "river": "魏城河",
+        "city": "绵阳市",
+        "location_detail": "游仙区魏城镇拱桥沟西南约344米",
+        "water_type": "河流",
+        "structure": "拱桥结构、洄水湾",
+        "depth": 2.5,
+        "target_species": "翘嘴",
+        "lure_types": "铁板,亮片,米诺",
+        "best_season": "7月（雨后窗口期）",
+        "note": "魏城大翘嘴标点！7月雨后5条大翘嘴记录，当天指数79（最高）。翘嘴话事人(海带)分享。雨天大翘嘴靠岸觅食。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "游仙区",
+    },
+    {
+        "name": "圆窝子河何家湾",
+        "latitude": 31.5000,
+        "longitude": 104.8300,
+        "river": "圆窝子河",
+        "city": "绵阳市",
+        "location_detail": "绵阳市游仙区圆窝子河何家湾河段",
+        "water_type": "河流",
+        "structure": "湾道、深浅交接",
+        "depth": 2.0,
+        "target_species": "翘嘴,鳜鱼",
+        "lure_types": "亮片,铅头钩+软饵",
+        "best_season": "5月",
+        "note": "圆窝子河何家湾标点。5月初翘嘴浅滩活动，落水匀收+停顿换节奏效果好。",
+        "spot_type": "野河",
+        "fee_type": "免费",
+        "district": "游仙区",
+    },
+]
+
+
+def seed():
+    db = SessionLocal()
+    try:
+        now_ms = int(time.time() * 1000)
+        inserted = 0
+        skipped = 0
+
+        for s in SPOTS:
+            # 按名称+城市判断是否已存在
+            existing = db.query(FishingSpotModel).filter(
+                FishingSpotModel.name == s["name"],
+                FishingSpotModel.city == s["city"]
+            ).first()
+            if existing:
+                # 更新已有记录的路亚专属字段
+                existing.target_species = s.get("target_species")
+                existing.lure_types = s.get("lure_types")
+                existing.best_season = s.get("best_season")
+                existing.note = s.get("note")
+                existing.update_time = now_ms
+                print(f"  [更新] {s['name']}")
+                skipped += 1
+                continue
+
+            spot = FishingSpotModel(
+                id=str(uuid.uuid4()),
+                name=s["name"],
+                latitude=s["latitude"],
+                longitude=s["longitude"],
+                river=s.get("river"),
+                city=s.get("city"),
+                location_detail=s.get("location_detail"),
+                q_weather_location_id=None,
+                water_type=s["water_type"],
+                structure=s["structure"],
+                depth=s.get("depth"),
+                target_species=s.get("target_species"),
+                lure_types=s.get("lure_types"),
+                best_season=s.get("best_season"),
+                note=s.get("note"),
+                photos="[]",
+                create_time=now_ms,
+                update_time=now_ms,
+                spot_type=s.get("spot_type", "野河"),
+                fee_type=s.get("fee_type", "免费"),
+                district=s.get("district", ""),
+            )
+            db.add(spot)
+            print(f"  [新增] {s['name']} | 目标鱼: {s.get('target_species','-')}")
+            inserted += 1
+
+        db.commit()
+        print(f"\n{'='*60}")
+        print(f"  路亚日历标点导入完成!")
+        print(f"  新增: {inserted} 个标点")
+        print(f"  更新: {skipped} 个标点（已存在，更新了路亚专属字段）")
+        print(f"{'='*60}")
+    except Exception as e:
+        db.rollback()
+        print(f"错误: {e}")
+        raise
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    print("=" * 60)
+    print("  LureCalendar - 路亚日历个人标点导入")
+    print("=" * 60)
+    print(f"  总计: {len(SPOTS)} 个标点")
+    print(f"  来源: 路亚日历.md 实际作钓记录")
+    print(f"  覆盖: 梓潼县、安州区、游仙区、涪城区、")
+    print(f"        盐亭县、剑阁县")
+    print(f"  排除: 台钓/手竿标点、非路亚对象鱼标点")
+    print("=" * 60)
+    seed()

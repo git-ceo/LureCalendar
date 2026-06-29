@@ -1,0 +1,13 @@
+fastapi==0.111.0
+uvicorn==0.30.0
+sqlalchemy==2.0.30
+pymysql==1.1.1
+python-dotenv>=1.0.0
+# v3.0 内容爬虫依赖
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=5.2.0
+# 可选：农历转换
+zhdate>=0.1
+# 可选：PDF 报告
+reportlab>=4.0.0
