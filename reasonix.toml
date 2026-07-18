@@ -1,2 +1,2 @@
 [permissions]
-allow = ["Bash(cd /d/dev/LureCalendar && git add -A && git commit -m \"chore: update topic title\" && git push)"]
+allow = ["Bash(cd /d/dev/LureCalendar && git add -A && git commit -m \"chore: update topic title\" && git push)", "Bash(cd \"D:\\dev\\LureCalendar-main\" && cat .gitignore 2>$null; if (-not (Test-Path .gitignore)) { echo \"no .gitignore\" })"]
